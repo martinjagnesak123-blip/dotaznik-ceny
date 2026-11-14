@@ -1,0 +1,833 @@
+<!DOCTYPE html>
+<html lang="sk">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Výskum – Odhad cien produktov</title>
+  <style>
+    :root {
+      --bg: #f8fafc;
+      --card: #ffffff;
+      --text: #0f172a;
+      --muted: #475569;
+      --primary: #2563eb;
+      --primary-hover: #1d4ed8;
+      --border: #e2e8f0;
+      --tag-bg: #fef08a;
+      --tag-border: #eab308;
+      --danger: #dc2626;
+      --success: #16a34a;
+    }
+    * { box-sizing: border-box; }
+    body {
+      margin: 0;
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+      background: var(--bg);
+      color: var(--text);
+      line-height: 1.5;
+    }
+    .container {
+      max-width: 820px;
+      margin: 28px auto;
+      padding: 0 16px;
+    }
+    .card {
+      background: var(--card);
+      border: 1px solid var(--border);
+      border-radius: 14px;
+      padding: 28px;
+      box-shadow: 0 4px 16px rgba(15, 23, 42, 0.05);
+    }
+    h1 { font-size: 1.55rem; margin: 0 0 12px; }
+    h2 { font-size: 1.25rem; margin: 0 0 12px; }
+    p { margin: 0 0 14px; color: var(--muted); }
+    .hidden { display: none !important; }
+    .btn {
+      display: inline-block;
+      background: var(--primary);
+      color: #fff;
+      border: none;
+      border-radius: 10px;
+      padding: 13px 24px;
+      font-size: 1rem;
+      font-weight: 600;
+      cursor: pointer;
+      transition: background 0.15s;
+    }
+    .btn:hover:not(:disabled) { background: var(--primary-hover); }
+    .btn:disabled { opacity: 0.5; cursor: not-allowed; }
+    .form-group { margin-bottom: 20px; }
+    label { display: block; font-weight: 600; margin-bottom: 8px; font-size: 0.96rem; }
+    input[type="text"], input[type="number"], select {
+      width: 100%;
+      padding: 11px 12px;
+      border: 1px solid #cbd5e1;
+      border-radius: 8px;
+      font-size: 1rem;
+    }
+    .checkbox-row {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      margin: 20px 0;
+      padding: 14px 16px;
+      background: #f1f5f9;
+      border-radius: 10px;
+      cursor: pointer;
+    }
+    .checkbox-row input {
+      width: 22px;
+      height: 22px;
+      cursor: pointer;
+      accent-color: var(--primary);
+      flex-shrink: 0;
+    }
+    .checkbox-row label { margin: 0; font-weight: 500; cursor: pointer; }
+    .topbar {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 16px;
+      padding-bottom: 12px;
+      border-bottom: 1px solid var(--border);
+    }
+    .progress { font-weight: 600; color: var(--muted); font-size: 0.95rem; }
+    .timer {
+      font-weight: 700;
+      font-size: 1.15rem;
+      padding: 6px 14px;
+      border-radius: 999px;
+      background: #eff6ff;
+      color: var(--primary);
+      border: 1px solid #bfdbfe;
+    }
+    .timer.urgent {
+      background: #fef2f2;
+      color: var(--danger);
+      border-color: #fecaca;
+    }
+    .product-box {
+      display: grid;
+      grid-template-columns: 230px 1fr;
+      gap: 22px;
+      align-items: center;
+      margin-bottom: 20px;
+    }
+    @media (max-width: 640px) {
+      .product-box { grid-template-columns: 1fr; }
+    }
+    .product-img-wrap {
+      width: 100%;
+      aspect-ratio: 1 / 1;
+      border: 1px solid var(--border);
+      border-radius: 12px;
+      background: #fff;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      overflow: hidden;
+      padding: 10px;
+    }
+    .product-img-wrap img {
+      max-width: 100%;
+      max-height: 100%;
+      object-fit: contain;
+    }
+    .price-tag {
+      display: inline-block;
+      background: var(--tag-bg);
+      border: 2px dashed var(--tag-border);
+      padding: 10px 16px;
+      border-radius: 8px;
+      font-weight: 700;
+      font-size: 1.15rem;
+      color: #713f12;
+      margin: 10px 0 14px;
+    }
+
+    /* VYLEPŠENÉ KLIKACIE BUNKY PRE MATICU Z1, Z2 (CELÁ BUNKA JE KLIKATEĽNÁ) */
+    .table-scroll {
+      overflow-x: auto;
+      margin: 10px 0 24px;
+    }
+    .matrix-table {
+      width: 100%;
+      border-collapse: collapse;
+      font-size: 0.92rem;
+    }
+    .matrix-table th, .matrix-table td {
+      border: 1px solid var(--border);
+      padding: 0;
+      text-align: center;
+    }
+    .matrix-table th {
+      padding: 10px 6px;
+      background: #f1f5f9;
+      font-weight: 700;
+    }
+    .matrix-table th:first-child, .matrix-table td:first-child {
+      text-align: left;
+      padding: 10px 12px;
+      font-weight: 500;
+      min-width: 190px;
+    }
+    .matrix-table tr:nth-child(even) { background: #f8fafc; }
+    .matrix-cell-label {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      width: 100%;
+      min-height: 46px;
+      min-width: 42px;
+      margin: 0;
+      cursor: pointer;
+      transition: background 0.12s;
+    }
+    .matrix-cell-label:hover {
+      background: #eff6ff;
+    }
+    .matrix-cell-label input[type="radio"] {
+      width: 22px;
+      height: 22px;
+      margin: 0;
+      cursor: pointer;
+      accent-color: var(--primary);
+    }
+    .matrix-cell-label:has(input:checked) {
+      background: #dbeafe;
+    }
+
+    /* VYLEPŠENÉ RÁDIOVÉ MOŽNOSTI PRE P1 */
+    .radio-group { display: flex; flex-direction: column; gap: 10px; margin-top: 8px; }
+    .radio-option {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      padding: 12px 14px;
+      border: 1px solid var(--border);
+      border-radius: 10px;
+      cursor: pointer;
+      transition: background 0.12s, border-color 0.12s;
+    }
+    .radio-option:hover {
+      background: #f8fafc;
+      border-color: #94a3b8;
+    }
+    .radio-option:has(input:checked) {
+      background: #eff6ff;
+      border-color: var(--primary);
+    }
+    .radio-option input[type="radio"] {
+      width: 22px;
+      height: 22px;
+      margin: 0;
+      cursor: pointer;
+      accent-color: var(--primary);
+      flex-shrink: 0;
+    }
+
+    /* VYLEPŠENÉ LIKERTOVE POLÍČKA M1, M2 */
+    .likert-row {
+      display: flex;
+      justify-content: space-between;
+      gap: 8px;
+      margin-top: 8px;
+    }
+    .likert-cell {
+      flex: 1;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      gap: 6px;
+      border: 1px solid var(--border);
+      border-radius: 10px;
+      padding: 12px 4px;
+      min-height: 62px;
+      cursor: pointer;
+      font-weight: 600;
+      transition: background 0.12s, border-color 0.12s;
+    }
+    .likert-cell:hover {
+      background: #f8fafc;
+      border-color: #94a3b8;
+    }
+    .likert-cell:has(input:checked) {
+      background: #dbeafe;
+      border-color: var(--primary);
+    }
+    .likert-cell input[type="radio"] {
+      width: 22px;
+      height: 22px;
+      margin: 0;
+      cursor: pointer;
+      accent-color: var(--primary);
+    }
+    .likert-labels {
+      display: flex;
+      justify-content: space-between;
+      font-size: 0.84rem;
+      color: var(--muted);
+      margin-top: 6px;
+    }
+    .error-msg {
+      color: var(--danger);
+      font-weight: 600;
+      font-size: 0.92rem;
+      margin-top: 10px;
+      margin-bottom: 10px;
+    }
+    .status-badge {
+      display: inline-block;
+      padding: 8px 14px;
+      border-radius: 8px;
+      font-size: 0.92rem;
+      font-weight: 600;
+      margin-top: 10px;
+    }
+    .status-ok { background: #dcfce7; color: #166534; }
+    .status-err { background: #fee2e2; color: #991b1b; }
+  </style>
+</head>
+<body>
+<div class="container">
+
+  <!-- 1. ÚVOD A SÚHLAS (PLNE ANONYMNÝ – BEZ MENA A PREZÝVKY) -->
+  <section id="sec-intro" class="card">
+    <h1>Výskum spotrebiteľského úsudku</h1>
+    <p>Ahoj, ďakujeme, že sa zapájaš do nášho výskumu v rámci predmetu behaviorálna ekonómia. Dotazník trvá približne 6–8 minút.</p>
+    <p>Nie sú v ňom správne ani nesprávne odpovede, zaujíma nás tvoj vlastný úsudok. Odpovede sú úplne anonymné a použijeme ich len v súhrnnej podobe na študijné účely. Účasť je dobrovoľná a dotazník môžeš kedykoľvek ukončiť.</p>
+
+    <div class="checkbox-row" onclick="document.getElementById('consent-check').click()">
+      <input type="checkbox" id="consent-check" onclick="event.stopPropagation()" />
+      <label for="consent-check" onclick="event.stopPropagation()">Súhlasím s účasťou vo výskume a mám aspoň 18 rokov.</label>
+    </div>
+
+    <div id="intro-error" class="error-msg hidden">Pre pokračovanie potvrď súhlas s účasťou.</div>
+    <button class="btn" id="btn-to-scenario">Pokračovať</button>
+  </section>
+
+  <!-- 2. SCENÁR + INŠTRUKCIE PODĽA SKUPINY -->
+  <section id="sec-scenario" class="card hidden">
+    <h2>Situácia</h2>
+    <p>Tvoja kamarátka má malý obchod s rôznym tovarom. Občas jej vypomôžeš, pretože sa dobre poznáte a záleží ti na tom, aby sa jej darilo.</p>
+    <p>Dnes ráno, keď si jej prišiel/prišla pomôcť, ti povedala, že sa jej pokazila tlačiareň cenoviek. Desať tovarov preto označila úplne náhodnými cenami, ktoré nezodpovedajú ich skutočnej hodnote.</p>
+    <p>Poprosila ťa, aby si chybné cenovky prelepil/a novými, s cenou, ktorú podľa teba daný tovar má mať. Na ďalších obrazovkách uvidíš každý tovar aj s jeho pôvodnou, chybnou cenovkou. Napíš cenu, ktorú dáš na novú cenovku.</p>
+
+    <hr style="border:none;border-top:1px solid var(--border);margin:18px 0;" />
+
+    <h2>Inštrukcie</h2>
+    <p id="group-instruction" style="color:var(--text);font-weight:500;"></p>
+
+    <button class="btn" id="btn-start-tasks">Začať oceňovať tovar</button>
+  </section>
+
+  <!-- 3. 10 OBRAZOVIEK ODHADU CENY -->
+  <section id="sec-product" class="card hidden">
+    <div class="topbar">
+      <div class="progress" id="product-progress">Produkt 1 z 10</div>
+      <div class="timer hidden" id="product-timer">0:10</div>
+    </div>
+
+    <div class="product-box">
+      <div class="product-img-wrap">
+        <img id="prod-img" src="" alt="Obrázok produktu" />
+      </div>
+      <div>
+        <h2 id="prod-name"></h2>
+        <p id="prod-desc"></p>
+        <div class="price-tag">
+          Pôvodná (chybná) cenovka: <span id="prod-anchor"></span> €
+        </div>
+        <div class="form-group">
+          <label for="price-input">Akú cenu napíšeš na novú cenovku? (€)</label>
+          <input type="text" id="price-input" inputmode="decimal" placeholder="napr. 14,50" autocomplete="off" />
+        </div>
+      </div>
+    </div>
+
+    <div id="prod-error" class="error-msg hidden">Zadaj platnú cenu v rozsahu 0,01 až 999,99 €.</div>
+    <button class="btn" id="btn-next-product">Potvrdiť cenu a pokračovať</button>
+  </section>
+
+  <!-- 4. SUBJEKTÍVNA ZNALOSŤ PRODUKTOV (Z1, Z2) -->
+  <section id="sec-knowledge" class="card hidden">
+    <h2>Znalosť produktov</h2>
+    <p>Na záver nám ešte odpovedz na niekoľko doplňujúcich otázok. Tu už nie je žiadny časový limit.</p>
+
+    <label>Z1: Ako dobre poznáš tento typ produktu? (1 = vôbec nepoznám, 7 = poznám veľmi dobre)</label>
+    <div class="table-scroll">
+      <table class="matrix-table" id="table-z1"></table>
+    </div>
+
+    <label>Z2: Ako dobre vieš, koľko tento typ produktu v obchodoch bežne stojí? (1 = vôbec neviem, 7 = viem veľmi presne)</label>
+    <div class="table-scroll">
+      <table class="matrix-table" id="table-z2"></table>
+    </div>
+
+    <div id="know-error" class="error-msg hidden">Prosím, ohodnoť všetky produkty v oboch tabuľkách.</div>
+    <button class="btn" id="btn-to-controls">Pokračovať</button>
+  </section>
+
+  <!-- 5. KONTROLNÉ OTÁZKY A DEMOGRAFIA -->
+  <section id="sec-controls" class="card hidden">
+    <h2>Kontrolné otázky a demografia</h2>
+
+    <div class="form-group">
+      <label>M1: Ako veľmi si sa pri určovaní cien cítil/a pod časovým tlakom?</label>
+      <div class="likert-row" id="likert-m1"></div>
+      <div class="likert-labels"><span>1 = vôbec</span><span>7 = veľmi silno</span></div>
+    </div>
+
+    <div class="form-group">
+      <label>M2: Do akej miery si pri určovaní ceny bral/a do úvahy pôvodnú (chybnú) cenovku?</label>
+      <div class="likert-row" id="likert-m2"></div>
+      <div class="likert-labels"><span>1 = vôbec</span><span>7 = veľmi</span></div>
+    </div>
+
+    <div class="form-group">
+      <label>P1: Prečo bolo treba prelepiť cenovky?</label>
+      <div class="radio-group" id="radio-p1">
+        <label class="radio-option"><input type="radio" name="p1" value="1" /> Pokazila sa tlačiareň</label>
+        <label class="radio-option"><input type="radio" name="p1" value="0_zdrazel" /> Tovar zdražel</label>
+        <label class="radio-option"><input type="radio" name="p1" value="0_akcia" /> Tovar bol v akcii</label>
+        <label class="radio-option"><input type="radio" name="p1" value="0_neviem" /> Neviem</label>
+      </div>
+    </div>
+
+    <div class="form-group">
+      <label for="dem-age">D1: Koľko máš rokov?</label>
+      <input type="number" id="dem-age" min="18" max="99" placeholder="napr. 22" />
+    </div>
+
+    <div class="form-group">
+      <label for="dem-gender">D2: Pohlavie</label>
+      <select id="dem-gender">
+        <option value="">-- Vyber možnosť --</option>
+        <option value="1">Žena</option>
+        <option value="2">Muž</option>
+        <option value="3">Iné</option>
+        <option value="4">Nechcem uviesť</option>
+      </select>
+    </div>
+
+    <div id="ctrl-error" class="error-msg hidden">Prosím, vyplň všetky otázky na tejto obrazovke (vek 18–99).</div>
+    <button class="btn" id="btn-submit">Odoslať dotazník</button>
+  </section>
+
+  <!-- 6. POĎAKOVANIE A VYSVETLENIE -->
+  <section id="sec-thanks" class="card hidden">
+    <h2>Ďakujeme za účasť!</h2>
+    <p>Ceny na pôvodných cenovkách neboli úplne náhodné: niektoré boli zámerne vysoké a niektoré nízke. Skúmame, ako takto zobrazené číslo ovplyvňuje odhad ceny a či záleží na časovom tlaku.</p>
+    <p>Prosíme, nehovor o tom ďalším ľuďom, kým dotazník nevyplnia.</p>
+    <div id="save-status" class="status-badge">Ukladám odpovede...</div>
+  </section>
+
+</div>
+
+<script>
+  const RESEARCHER_CONFIG = {
+    endpointUrl: "https://script.google.com/macros/s/AKfycbyGRxRJnmyWeMJp3wsIkmMrRVRq9IIaaZGniRIXTSdgo6SK1lRAmTGVcLdJdt1NiC4I/exec",
+    timerSeconds: 10
+  };
+
+  // Obrázky musia byť nahraté na serveri (Netlify / GitHub Pages) v priečinku img/ vedľa index.html
+  const PRODUCTS = [
+    {
+      id: 1,
+      name: "Nerezový termohrnček 0,45 l",
+      desc: "Dvojstenný, udrží teplotu nápoja až 6 hodín, uzáver proti vyliatiu.",
+      ref: 9.39,
+      low: 4.70,
+      high: 14.10,
+      img: "Obrázok1.png"
+    },
+    {
+      id: 2,
+      name: "Kvetový med 500 g",
+      desc: "Od lokálneho včelára, v sklenenom pohári.",
+      ref: 9.57,
+      low: 4.80,
+      high: 14.40,
+      img: "Obrázok2.png"
+    },
+    {
+      id: 3,
+      name: "Skladací dáždnik",
+      desc: "Automatické otváranie aj zatváranie, odolný vetru, v obale.",
+      ref: 39.00,
+      low: 19.40,
+      high: 58.60,
+      img: "Obrázok3.png"
+    },
+    {
+      id: 4,
+      name: "Powerbanka 10 000 mAh",
+      desc: "USB-C aj USB-A, rýchle nabíjanie, veľkosť mobilu.",
+      ref: 16.00,
+      low: 7.90,
+      high: 24.10,
+      img: "Obrázok4.png"
+    },
+    {
+      id: 5,
+      name: "Stolová LED lampa",
+      desc: "Nastaviteľné rameno, 3 farby svetla, dotykové ovládanie.",
+      ref: 22.50,
+      low: 11.20,
+      high: 33.80,
+      img: "Obrázok5.png"
+    },
+    {
+      id: 6,
+      name: "Mestský batoh 20 l",
+      desc: "Vodeodolný materiál, priehradka na notebook do 15″.",
+      ref: 72.70,
+      low: 36.40,
+      high: 109.10,
+      img: "Obrázok6.png"
+    },
+    {
+      id: 7,
+      name: "Kartová spoločenská hra",
+      desc: "Pre 2–6 hráčov od 8 rokov, partia trvá asi 20 minút.",
+      ref: 15.00,
+      low: 7.40,
+      high: 22.60,
+      img: "Obrázok7.png"
+    },
+    {
+      id: 8,
+      name: "Elektrická sonická zubná kefka",
+      desc: "2 režimy, časovač, nabíjanie cez USB, 1 náhradná hlavica.",
+      ref: 112.49,
+      low: 56.20,
+      high: 168.70,
+      img: "Obrázok8.png"
+    },
+    {
+      id: 9,
+      name: "Diár A5 na rok 2027",
+      desc: "Tvrdá väzba, týždenný prehľad, záložková stužka.",
+      ref: 12.61,
+      low: 6.30,
+      high: 18.90,
+      img: "Obrázok9.png"
+    },
+    {
+      id: 10,
+      name: "Vankúš z pamäťovej peny",
+      desc: "Ergonomický tvar, 50 × 30 cm, snímateľná prateľná obliečka.",
+      ref: 22.32,
+      low: 11.20,
+      high: 33.60,
+      img: "Obrázok10.png"
+    }
+  ];
+
+  const state = {
+    verzia: 1,
+    cas_tlak: 0,
+    kombinacia_kotiev: "A",
+    order: [],
+    currentIndex: 0,
+    screenStartTime: 0,
+    timerInterval: null,
+    estimates: {},
+    z1: {},
+    z2: {}
+  };
+
+  function shuffle(arr) {
+    const copy = [...arr];
+    for (let i = copy.length - 1; i > 0; i--) {
+      const j = Math.floor(Math.random() * (i + 1));
+      [copy[i], copy[j]] = [copy[j], copy[i]];
+    }
+    return copy;
+  }
+
+  function assignVersion(v) {
+    const version = [1, 2, 3, 4].includes(Number(v)) ? Number(v) : (Math.floor(Math.random() * 4) + 1);
+    state.verzia = version;
+    state.cas_tlak = (version === 1 || version === 2) ? 1 : 0;
+    state.kombinacia_kotiev = (version === 1 || version === 3) ? "A" : "B";
+  }
+
+  async function initVersionAssignment() {
+    assignVersion(Math.floor(Math.random() * 4) + 1);
+    if (!RESEARCHER_CONFIG.endpointUrl || RESEARCHER_CONFIG.endpointUrl.includes("SEM_VLOZ")) return;
+    try {
+      const res = await fetch(RESEARCHER_CONFIG.endpointUrl + "?action=nextVersion", { method: "GET" });
+      if (res.ok) {
+        const json = await res.json();
+        if (json && [1, 2, 3, 4].includes(Number(json.verzia))) {
+          assignVersion(Number(json.verzia));
+        }
+      }
+    } catch (e) {}
+  }
+
+  function getAnchorForProduct(product) {
+    const isOdd = product.id % 2 === 1;
+    const isHigh = (state.kombinacia_kotiev === "A") ? isOdd : !isOdd;
+    return {
+      kotva: isHigh ? 1 : 0,
+      price: isHigh ? product.high : product.low
+    };
+  }
+
+  function formatEuro(val) {
+    return val.toFixed(2).replace(".", ",");
+  }
+
+  function showSection(id) {
+    ["sec-intro", "sec-scenario", "sec-product", "sec-knowledge", "sec-controls", "sec-thanks"]
+      .forEach(sec => document.getElementById(sec).classList.add("hidden"));
+    document.getElementById(id).classList.remove("hidden");
+    window.scrollTo({ top: 0, behavior: "smooth" });
+  }
+
+  // KROK 1 -> KROK 2 (LEN SÚHLAS, BEZ MENA)
+  document.getElementById("btn-to-scenario").addEventListener("click", () => {
+    const consent = document.getElementById("consent-check").checked;
+    const err = document.getElementById("intro-error");
+    if (!consent) {
+      err.classList.remove("hidden");
+      return;
+    }
+    err.classList.add("hidden");
+
+    const instrEl = document.getElementById("group-instruction");
+    if (state.cas_tlak === 1) {
+      instrEl.textContent = `Kamarátka o chvíľu otvára a zákazníci už čakajú pred dverami. Na každý tovar máš preto len ${RESEARCHER_CONFIG.timerSeconds} sekúnd. Zostávajúci čas uvidíš hore na obrazovke. Ak nestíhaš, dotazník sa sám posunie na ďalší tovar.`;
+    } else {
+      instrEl.textContent = "Obchod sa otvára až poobede, takže máš času dosť. Pri každom tovare si pokojne rozmysli, akú cenu mu dáš.";
+    }
+    showSection("sec-scenario");
+  });
+
+  // KROK 2 -> KROK 3
+  document.getElementById("btn-start-tasks").addEventListener("click", () => {
+    state.order = shuffle(PRODUCTS);
+    state.currentIndex = 0;
+    showSection("sec-product");
+    renderCurrentProduct();
+  });
+
+  function clearProductTimer() {
+    if (state.timerInterval) {
+      clearInterval(state.timerInterval);
+      state.timerInterval = null;
+    }
+  }
+
+  function renderCurrentProduct() {
+    clearProductTimer();
+    const prod = state.order[state.currentIndex];
+    const anchorInfo = getAnchorForProduct(prod);
+
+    document.getElementById("product-progress").textContent = `Produkt ${state.currentIndex + 1} z ${state.order.length}`;
+    document.getElementById("prod-name").textContent = prod.name;
+    document.getElementById("prod-desc").textContent = prod.desc;
+    document.getElementById("prod-anchor").textContent = formatEuro(anchorInfo.price);
+
+    const imgEl = document.getElementById("prod-img");
+    imgEl.src = prod.img;
+    imgEl.onerror = () => {
+      imgEl.onerror = null;
+      imgEl.src = "data:image/svg+xml;utf8," + encodeURIComponent(
+        `<svg xmlns="http://www.w3.org/2000/svg" width="300" height="300"><rect width="100%" height="100%" fill="#f1f5f9"/><text x="50%" y="50%" dominant-baseline="middle" text-anchor="middle" fill="#64748b" font-family="sans-serif" font-size="16">${prod.name}</text></svg>`
+      );
+    };
+
+    const inputEl = document.getElementById("price-input");
+    inputEl.value = "";
+    document.getElementById("prod-error").classList.add("hidden");
+    inputEl.focus();
+
+    state.screenStartTime = performance.now();
+
+    const timerEl = document.getElementById("product-timer");
+    if (state.cas_tlak === 1) {
+      timerEl.classList.remove("hidden", "urgent");
+      let remaining = RESEARCHER_CONFIG.timerSeconds;
+      timerEl.textContent = `0:${String(remaining).padStart(2, "0")}`;
+
+      state.timerInterval = setInterval(() => {
+        remaining -= 1;
+        if (remaining <= 3) timerEl.classList.add("urgent");
+        if (remaining > 0) {
+          timerEl.textContent = `0:${String(remaining).padStart(2, "0")}`;
+        } else {
+          timerEl.textContent = "0:00";
+          clearProductTimer();
+          handleProductSubmit(true);
+        }
+      }, 1000);
+    } else {
+      timerEl.classList.add("hidden");
+    }
+  }
+
+  function parsePrice(raw) {
+    const cleaned = raw.trim().replace(/\s+/g, "").replace(",", ".");
+    if (!cleaned) return NaN;
+    const num = Number(cleaned);
+    if (!Number.isFinite(num) || num < 0.01 || num > 999.99) return NaN;
+    return Math.round(num * 100) / 100;
+  }
+
+  function handleProductSubmit(timedOut = false) {
+    const prod = state.order[state.currentIndex];
+    const anchorInfo = getAnchorForProduct(prod);
+    const rawVal = document.getElementById("price-input").value;
+    const parsed = parsePrice(rawVal);
+
+    if (!timedOut && Number.isNaN(parsed)) {
+      document.getElementById("prod-error").classList.remove("hidden");
+      return;
+    }
+
+    clearProductTimer();
+    const elapsedMs = Math.round(performance.now() - state.screenStartTime);
+
+    state.estimates[prod.id] = {
+      produkt: prod.id,
+      kotva: anchorInfo.kotva,
+      odhad: Number.isNaN(parsed) ? "" : parsed,
+      ref_cena: prod.ref,
+      log_pomer: Number.isNaN(parsed) ? "" : Math.round(Math.log(parsed / prod.ref) * 100000) / 100000,
+      cas_ms: elapsedMs,
+      nestihol: (state.cas_tlak === 1 && timedOut) ? 1 : 0
+    };
+
+    state.currentIndex += 1;
+    if (state.currentIndex < state.order.length) {
+      renderCurrentProduct();
+    } else {
+      buildKnowledgeTables();
+      showSection("sec-knowledge");
+    }
+  }
+
+  document.getElementById("btn-next-product").addEventListener("click", () => handleProductSubmit(false));
+  document.getElementById("price-input").addEventListener("keydown", (e) => {
+    if (e.key === "Enter") {
+      e.preventDefault();
+      handleProductSubmit(false);
+    }
+  });
+
+  // KROK 4: MATICA Z1, Z2 S VEĽKÝMI KLIKACÍMI BUNKAMI
+  function buildKnowledgeTables() {
+    ["z1", "z2"].forEach(prefix => {
+      const table = document.getElementById(`table-${prefix}`);
+      let html = "<thead><tr><th>Produkt</th><th>1</th><th>2</th><th>3</th><th>4</th><th>5</th><th>6</th><th>7</th></tr></thead><tbody>";
+      PRODUCTS.forEach(p => {
+        html += `<tr><td>${p.name}</td>`;
+        for (let val = 1; val <= 7; val++) {
+          html += `<td><label class="matrix-cell-label"><input type="radio" name="${prefix}_p${p.id}" value="${val}" /></label></td>`;
+        }
+        html += "</tr>";
+      });
+      html += "</tbody>";
+      table.innerHTML = html;
+    });
+  }
+
+  document.getElementById("btn-to-controls").addEventListener("click", () => {
+    let allFilled = true;
+    PRODUCTS.forEach(p => {
+      const r1 = document.querySelector(`input[name="z1_p${p.id}"]:checked`);
+      const r2 = document.querySelector(`input[name="z2_p${p.id}"]:checked`);
+      if (!r1 || !r2) {
+        allFilled = false;
+      } else {
+        state.z1[p.id] = Number(r1.value);
+        state.z2[p.id] = Number(r2.value);
+      }
+    });
+
+    if (!allFilled) {
+      document.getElementById("know-error").classList.remove("hidden");
+      return;
+    }
+    document.getElementById("know-error").classList.add("hidden");
+    buildControlLikerts();
+    showSection("sec-controls");
+  });
+
+  // KROK 5: KONTROLNÉ OTÁZKY A DEMOGRAFIA
+  function buildControlLikerts() {
+    ["m1", "m2"].forEach(name => {
+      const row = document.getElementById(`likert-${name}`);
+      if (row.children.length > 0) return;
+      for (let v = 1; v <= 7; v++) {
+        const cell = document.createElement("label");
+        cell.className = "likert-cell";
+        cell.innerHTML = `<span>${v}</span><input type="radio" name="${name}" value="${v}" />`;
+        row.appendChild(cell);
+      }
+    });
+  }
+
+  document.getElementById("btn-submit").addEventListener("click", async () => {
+    const m1El = document.querySelector('input[name="m1"]:checked');
+    const m2El = document.querySelector('input[name="m2"]:checked');
+    const p1El = document.querySelector('input[name="p1"]:checked');
+    const ageVal = Number(document.getElementById("dem-age").value);
+    const genderVal = document.getElementById("dem-gender").value;
+
+    if (!m1El || !m2El || !p1El || !Number.isInteger(ageVal) || ageVal < 18 || ageVal > 99 || !genderVal) {
+      document.getElementById("ctrl-error").classList.remove("hidden");
+      return;
+    }
+    document.getElementById("ctrl-error").classList.add("hidden");
+
+    const items = PRODUCTS.map(p => ({
+      produkt: p.id,
+      kotva: state.estimates[p.id].kotva,
+      odhad: state.estimates[p.id].odhad,
+      ref_cena: state.estimates[p.id].ref_cena,
+      log_pomer: state.estimates[p.id].log_pomer,
+      cas_ms: state.estimates[p.id].cas_ms,
+      nestihol: state.estimates[p.id].nestihol,
+      znalost_typ: state.z1[p.id],
+      znalost_ceny: state.z2[p.id]
+    }));
+
+    const payload = {
+      verzia: state.verzia,
+      cas_tlak: state.cas_tlak,
+      kombinacia_kotiev: state.kombinacia_kotiev,
+      items: items,
+      m_tlak: Number(m1El.value),
+      m_kotva: Number(m2El.value),
+      pozornost: p1El.value === "1" ? 1 : 0,
+      vek: ageVal,
+      pohlavie: Number(genderVal)
+    };
+
+    showSection("sec-thanks");
+    const statusEl = document.getElementById("save-status");
+
+    try {
+      await fetch(RESEARCHER_CONFIG.endpointUrl, {
+        method: "POST",
+        mode: "no-cors",
+        headers: { "Content-Type": "text/plain;charset=utf-8" },
+        body: JSON.stringify(payload)
+      });
+      statusEl.textContent = "Tvoje odpovede boli úspešne zaznamenané.";
+      statusEl.classList.add("status-ok");
+    } catch (err) {
+      statusEl.textContent = "Nepodarilo sa spojiť so serverom, skontroluj internetové pripojenie.";
+      statusEl.classList.add("status-err");
+    }
+  });
+
+  initVersionAssignment();
+</script>
+</body>
+</html>
