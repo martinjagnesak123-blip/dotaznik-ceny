@@ -341,7 +341,7 @@
   <section id="sec-product" class="card hidden">
     <div class="topbar">
       <div class="progress" id="product-progress">Produkt 1 z 10</div>
-      <div class="timer hidden" id="product-timer">0:10</div>
+      <div class="timer hidden" id="product-timer">0:20</div>
     </div>
 
     <div class="product-box">
@@ -443,7 +443,7 @@
 <script>
   const RESEARCHER_CONFIG = {
     endpointUrl: "https://script.google.com/macros/s/AKfycbyGRxRJnmyWeMJp3wsIkmMrRVRq9IIaaZGniRIXTSdgo6SK1lRAmTGVcLdJdt1NiC4I/exec",
-    timerSeconds: 10
+    timerSeconds: 20
   };
 
   // Obrázky musia byť nahraté na serveri (Netlify / GitHub Pages) v priečinku img/ vedľa index.html
@@ -671,7 +671,7 @@
 
       state.timerInterval = setInterval(() => {
         remaining -= 1;
-        if (remaining <= 3) timerEl.classList.add("urgent");
+        if (remaining <= 5) timerEl.classList.add("urgent");
         if (remaining > 0) {
           timerEl.textContent = `0:${String(remaining).padStart(2, "0")}`;
         } else {
